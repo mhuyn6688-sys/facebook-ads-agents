@@ -1,30 +1,16 @@
 # Facebook Ads CBO Agent
-
-Node.js ES modules, Vercel functions, Meta Graph API v26.0.
+Node.js ES modules, Vercel Serverless Functions, Meta Graph API v26.0.
 
 ## Configuration
-- FB_AD_ACCOUNT_ID: digits or account label; non-digits are removed and act_ is added.
-- FB_ACCESS_TOKEN: requires access to this ad account, campaign insights, ads management, Page and creatives.
-- AGENT_SECRET_KEY: optional Bearer authentication for /api/check-ads. Add the same secret in GitHub Actions for the hourly job.
-- TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID: environment overrides for the existing fallbacks.
-- TELEGRAM_WEBHOOK_SECRET: optional; otherwise SHA-256 of the normalized bot token. Register the same secret_token with Telegram setWebhook.
-- This implementation supports VND accounts. It does not guess currency conversion from the size of an existing budget. One VND budget API unit is one dong.
+FB_AD_ACCOUNT_ID, FB_ACCESS_TOKEN, optional AGENT_SECRET_KEY.
+TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID override existing defaults.
+Telegram webhook secret defaults to SHA-256 of normalized bot token, or TELEGRAM_WEBHOOK_SECRET.
+Register setWebhook with allowed_updates ["message","callback_query"] and the matching secret_token.
+For group chats set TELEGRAM_USER_ID to the authorized operator; private-chat callbacks require the configured chat owner.
+GitHub Actions needs AGENT_SECRET_KEY equal to Vercel's value if endpoint authentication is enabled.
+Budget commands and VND rules support VND accounts; no guessing of exchange rates from budget magnitudes.
 
-## Rules
-The rules use today's campaign spend in the account timezone, with pagination:
-1. Spend >=200000 and zero results: pause.
-2. Spend >=200000 and cost/result >=50000: pause.
-3. At least 5 results, cost/result <35000, and campaign daily budget: recommend +20% CBO or duplication. Recommendations do not change budgets.
-
-Message counts prefer messaging_conversation_started_7d, then total_messaging_connection. If neither action exists, use the first available primary fallback (lead, omni_purchase, purchase). Do not add overlapping purchase/message counters. The result_type is included in JSON and /ds.
-
-## Endpoints
-- /api/check-ads: runs rules and sends plain-text Vietnamese Telegram reports for pauses, winners or errors. Add ?notify_all=1 for an empty report too.
-- /api/mcp: existing stateless MCP transport and checkFacebookAdsRules tool use the same rule engine.
-- /api/telegram: Telegram webhook, validates secret header and configured chat.
-- GitHub Actions runs 0 * * * * and supports manual workflow_dispatch.
-
-## Telegram commands
+## Commands
 /help hoặc /start — Hướng dẫn
 /check hoặc kiểm tra — Quét và tự tắt theo quy tắc
 /ds — Danh sách chiến dịch ACTIVE hôm nay
@@ -42,9 +28,48 @@ Cắt lỗ: chi >=200.000 đ và 0 kết quả hoặc giá >=50.000 đ/kết qu�
 Kết quả ưu tiên tin nhắn; nếu thiếu dùng loại kết quả thay thế ghi trong /ds.
 Chỉ hỗ trợ tài khoản VND.
 
-## Operational behavior
-/ds and /dexuat do not mutate campaigns. Rising cost is compared with yesterday's cost/result; no trend is claimed without results on both days.
-Budget/status commands verify campaign account ownership. /nhanban and /setads deep-copy campaigns with PAUSED status. Their child ads/adsets are prepared as ACTIVE under a PAUSED parent, so /bat can start the prepared campaign. /setads creates a new creative for the requested Page post and replaces creatives only on the copied ads.
-If setup fails after copying, the error includes the new campaign ID and the campaign stays PAUSED for review. Expired tokens, permissions, unsupported creatives and Meta review restrictions are reported as API errors.
-Long Telegram reports are split into messages. Telegram delivery failure does not rerun a completed mutation. Cross-invocation duplicate command suppression is not backed by persistent storage; do not resend a mutation command while it is still processing.
-GitHub schedules can be delayed and public-repository schedules can be disabled after inactivity. This is not a guaranteed exact-time scheduler.
+LỆNH NÂNG CAO
+/quetad — Quét Ad yếu trong chiến dịch CBO ACTIVE, bấm để tắt riêng Ad
+/hoisinh — Chiến dịch PAUSED có chi tiêu 3 ngày, bấm để bật lại
+/taikhoan — Sức khỏe tài khoản, Ad bị từ chối/có vấn đề
+/baocao — Tổng kết hôm nay và so sánh 7 ngày
+/setads URL_bài_viết Ngân_sách_VND Tên — Nhận link posts/videos/story_fbid/fbid hoặc ID số
+Nút bấm: Vít +20%, Tắt/Bật, Nhân bản.
+Bảo vệ công thần: >=15 kết quả và giá <35.000 đ trong 3 ngày; cảnh báo thay vì tự tắt.
+Giữ theo dõi không miễn quy tắc vĩnh viễn. Tổng kết tự động 00:10 giờ Việt Nam cho ngày vừa kết thúc.
+
+## Rules and protection
+Today: pause when spend >=200000 and zero results, or spend >=200000 and cost/result >=50000.
+Before any pause, read campaign last_3d insights. At least 15 results and weighted cost/result <35000 protects the campaign, with a warning and explicit override/monitor buttons. History failure aborts automatic pauses.
+Winners: at least 5 results and cost/result <35000, with a campaign daily budget; recommend +20%, do not auto-increase.
+Ad scan: active CBO campaigns with at least two ACTIVE ads, one spending >=150000 and zero results or cost/result >=50000. Only propose; the Ad-specific button pauses that Ad after checking ownership.
+The monitor button preserves state now; it does not exempt a campaign forever.
+Counting prefers messaging_conversation_started_7d, then total_messaging_connection, then the first available lead/omni_purchase/purchase fallback without double counting.
+
+## Reporting
+/api/check-ads runs the shared rules and sends campaign-by-campaign inline keyboards.
+/api/mcp retains the checkFacebookAdsRules tool, using the same history protection and Ad scan. MCP calls also send actionable Telegram reports.
+/ds includes all ACTIVE campaigns, including those with zero delivery. /dexuat includes the Ad scan.
+/hoisinh lists PAUSED campaigns with spend in last_3d and offers individual reactivation; it does not assume when or why a campaign was paused.
+/taikhoan includes raw account API monetary fields and DISAPPROVED/WITH_ISSUES ads.
+/baocao includes all campaign delivery today, including campaigns paused later. Weighted cost = total spend / total results. Seven-day comparisons use last_7d total spend/results and daily averages divided by 7.
+The best campaign is the lowest cost/result with results; the worst prioritizes the highest-spend zero-result campaign, then the highest cost/result.
+Facebook date presets follow the ad account timezone. /dexuat compares rising cost to yesterday.
+Hourly cron: 0 * * * * UTC.
+Completed-day report: 10 17 * * * UTC = 00:10 Asia/Ho_Chi_Minh the next day. Calls /api/check-ads?report=daily and reads yesterday, without running optimization again.
+GitHub schedules may be delayed; public-repository schedules can be disabled after inactivity.
+
+## Creating campaigns
+/setads accepts numeric Post_ID, PageID_PostID, and standard Facebook posts/videos/story_fbid/fbid URLs with a numeric post identifier.
+Opaque share/short/pfbid links are rejected with guidance to use the original numeric link; they are not guessed.
+New campaigns remain PAUSED. Child ads/adsets are prepared ACTIVE under the paused parent so /bat starts the prepared campaign.
+Partial creation failures return the paused campaign ID for review.
+
+## Delivery and retries
+Reports split long text and attach each campaign's keyboard to its own message.
+Buttons validate webhook secret, chat and operator before mutating; acknowledge callback queries promptly.
+Used keyboards are removed. Warm-instance duplicate suppression reduces repeat taps/updates but is not durable across Vercel instances; do not repeat an unconfirmed mutation.
+Only definitive Telegram rate-limit rejections are retried. Delivery failure never automatically repeats a completed Facebook mutation.
+
+## Verification
+Run node tests/advanced.test.mjs. Tests replace fetch with fixtures; they do not call Facebook or Telegram.
