@@ -1,11 +1,12 @@
 import { optimize, accountReport, accountReportText, FacebookApiError } from "../lib/facebook.js";
-import { sendTelegram } from "../lib/telegram.js";
+import { sendTelegram, ensureBotMenu } from "../lib/telegram.js";
 import { sendOptimizationReport } from "../lib/reports.js";
 export default async function handler(req, res) {
   if (process.env.AGENT_SECRET_KEY &&
       req.headers.authorization !== "Bearer " + process.env.AGENT_SECRET_KEY)
     return res.status(401).json({ error: "Unauthorized" });
   try {
+    await ensureBotMenu().catch(() => {});
     if (req.query?.report === "daily") {
       const result = await accountReport("yesterday");
       await sendTelegram(accountReportText(result), false);

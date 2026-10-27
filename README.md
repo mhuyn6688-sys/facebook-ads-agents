@@ -73,3 +73,16 @@ Only definitive Telegram rate-limit rejections are retried. Delivery failure nev
 
 ## Verification
 Run node tests/advanced.test.mjs. Tests replace fetch with fixtures; they do not call Facebook or Telegram.
+
+## Button-first Telegram dashboard
+The bot registers the fixed nine-command menu automatically, with a warm-instance one-hour cache and retry on subsequent invocations after failure. setChatMenuButton selects the commands menu.
+Every ordinary response carries the persistent four-row Vietnamese ReplyKeyboardMarkup. Dashboard/campaign cards carry InlineKeyboardMarkup in separate messages because Telegram permits only one reply_markup type per message.
+All eight Vietnamese labels route to the same handlers as the slash commands. /menu, /start, and unrecognized messages open the dashboard. Existing expert commands remain supported.
+Every /ds, /dexuat, /check campaign card and /hoisinh entry has +20%, status and copy actions; campaign cards also include custom budget and Menu buttons.
+Creation and custom budgets are guided by ForceReply prompts, without a server-memory session: reply to the bot's latest prompt with the requested value. The bot validates prompt authorship, ignores forwarded/expired prompts, and revalidates campaign ownership before writes. Prompts expire after 30 minutes. /menu or another navigation button leaves the current input flow.
+The creation flow asks for the post URL/ID, VND daily budget and campaign name; the resulting PAUSED campaign has a direct Activate button. Text input remains necessary for user-supplied URLs, amounts and names, but command syntax is optional.
+Account health requests funding_source_details separately; a missing permission does not suppress the rest of the health report. Only the display label/type are retained, not full payment details. spend_cap is an account spend limit, not a billing threshold; this API does not prove a card is valid or available.
+
+Run both:
+- node tests/advanced.test.mjs
+- node tests/menu.test.mjs

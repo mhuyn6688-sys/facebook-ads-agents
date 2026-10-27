@@ -1,10 +1,11 @@
+import { ensureBotMenu } from "../lib/telegram.js";
 import { sendOptimizationReport } from "../lib/reports.js";
 import { optimize, FacebookApiError } from "../lib/facebook.js";
 const PROTOCOL_VERSIONS = ["2025-11-25", "2025-06-18", "2025-03-26"];
 const TOOL_NAME = "checkFacebookAdsRules";
 const TOOL = {
   name: TOOL_NAME,
-  description: "Kiểm tra CBO ACTIVE hôm nay, bảo vệ lịch sử 3 ngày và quét Ad yếu: tự tắt khi chi >=200.000 đ và 0 kết quả hoặc giá >=50.000 đ; đề xuất tăng CBO khi >=5 kết quả và giá <35.000 đ",
+  description: "Điều khiển Telegram bằng Menu và bàn phím cố định; kiểm tra CBO ACTIVE hôm nay, bảo vệ lịch sử 3 ngày và quét Ad yếu: tự tắt khi chi >=200.000 đ và 0 kết quả hoặc giá >=50.000 đ; đề xuất tăng CBO khi >=5 kết quả và giá <35.000 đ",
   inputSchema: { type: "object", properties: {}, additionalProperties: false },
   annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
 };
@@ -105,6 +106,7 @@ export default async function handler(req, res) {
         return rpcError(res, 200, id, -32602, "Tool accepts only an empty arguments object");
       }
       try {
+        await ensureBotMenu().catch(() => {});
         const result = await optimize();
         if (result.paused_count || result.protected_campaigns.length || result.winning_campaigns.length ||
             result.ad_recommendations.length || result.errors.length) {
