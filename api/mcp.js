@@ -1,3 +1,14 @@
+class FacebookApiError extends Error {
+  constructor(response, data) {
+    const detail = data.error || {};
+    const code = detail.code ?? null;
+    const subcode = detail.error_subcode ?? detail.subcode ?? null;
+    super(`${detail.message ?? `Facebook Graph API request failed (HTTP ${response.status})`} (code: ${code}, subcode: ${subcode})`);
+    this.code = code;
+    this.subcode = subcode;
+  }
+}
+
 const PROTOCOL_VERSIONS = ["2025-11-25", "2025-06-18", "2025-03-26"];
 const TOOL_NAME = "checkFacebookAdsRules";
 const TOOL = {
@@ -8,8 +19,11 @@ const TOOL = {
 };
 
 async function checkFacebookAdsRules() {
-  const AD_ACCOUNT_ID = process.env.FB_AD_ACCOUNT_ID;
-  const ACCESS_TOKEN = process.env.FB_ACCESS_TOKEN;
+  const rawAccountId = (process.env.FB_AD_ACCOUNT_ID || "").trim();
+  const AD_ACCOUNT_ID = rawAccountId
+    ? (rawAccountId.startsWith("act_") ? rawAccountId : "act_" + rawAccountId)
+    : "";
+  const ACCESS_TOKEN = (process.env.FB_ACCESS_TOKEN || "").replace(/\s+/g, "");
   const SPEND_LIMIT = Number(process.env.SPEND_LIMIT || 200000);
   if (!AD_ACCOUNT_ID || !ACCESS_TOKEN) {
     throw new Error("Missing configuration: FB_AD_ACCOUNT_ID and FB_ACCESS_TOKEN are required");
@@ -22,10 +36,13 @@ async function checkFacebookAdsRules() {
     { field: "campaign.effective_status", operator: "IN", value: ["ACTIVE"] },
   ]));
   const insightsResponse = await fetch(
-    `https://graph.facebook.com/v21.0/${AD_ACCOUNT_ID}/insights?level=campaign&date_preset=today&fields=campaign_id,campaign_name,spend,actions&filtering=${filtering}&access_token=${encodeURIComponent(ACCESS_TOKEN)}`
+    `https://graph.facebook.com/v26.0/${AD_ACCOUNT_ID}/insights?level=campaign&date_preset=today&fields=campaign_id,campaign_name,spend,actions&filtering=${filtering}&access_token=${encodeURIComponent(ACCESS_TOKEN)}`
   );
   const insightsData = await insightsResponse.json();
-  if (!insightsResponse.ok || insightsData.error || !Array.isArray(insightsData.data)) {
+  if (!insightsResponse.ok || insightsData.error) {
+    throw new FacebookApiError(insightsResponse, insightsData);
+  }
+  if (!Array.isArray(insightsData.data)) {
     throw new Error("Failed to fetch Facebook campaign insights");
   }
 
@@ -45,7 +62,7 @@ async function checkFacebookAdsRules() {
     );
     if (spend >= SPEND_LIMIT && results === 0) {
       const pauseResponse = await fetch(
-        `https://graph.facebook.com/v21.0/${camp.campaign_id}`,
+        `https://graph.facebook.com/v26.0/${camp.campaign_id}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -53,6 +70,9 @@ async function checkFacebookAdsRules() {
         }
       );
       const pauseData = await pauseResponse.json();
+        if (!pauseResponse.ok || pauseData.error) {
+          throw new FacebookApiError(pauseResponse, pauseData);
+        }
       if (pauseData.success === true) {
         paused_campaigns.push({
           id: camp.campaign_id,
@@ -170,17 +190,17 @@ export default async function handler(req, res) {
         const result = await checkFacebookAdsRules();
         return reply({ content: [{ type: "text", text: JSON.stringify(result) }] });
       } catch (error) {
-        // Return controlled errors only; never expose URLs containing access tokens.
+        // Preserve Facebook API diagnostics; keep unexpected transport errors generic.
         const safeMessages = new Set([
           "Missing configuration: FB_AD_ACCOUNT_ID and FB_ACCESS_TOKEN are required",
           "Invalid configuration: SPEND_LIMIT must be a non-negative number",
           "Failed to fetch Facebook campaign insights",
         ]);
-        const message = safeMessages.has(error.message)
+        const message = error instanceof FacebookApiError || safeMessages.has(error.message)
           ? error.message : "Failed to communicate with Facebook Graph API";
         return reply({
           isError: true,
-          content: [{ type: "text", text: JSON.stringify({ error: message }) }],
+          content: [{ type: "text", text: JSON.stringify({ error: message, ...(error instanceof FacebookApiError ? { code: error.code, subcode: error.subcode } : {}) }) }],
         });
       }
     }
