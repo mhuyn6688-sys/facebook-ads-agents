@@ -1,3 +1,5 @@
+import { sendTelegram, reportText } from "../lib/telegram.js";
+
 class FacebookApiError extends Error {
   constructor(response, data) {
     const detail = data.error || {};
@@ -19,9 +21,9 @@ export default async function handler(req, res) {
 
   const AD_ACCOUNT_ID = "act_" + String(process.env.FB_AD_ACCOUNT_ID || "").replace(/\D+/g, "");
   const ACCESS_TOKEN = (process.env.FB_ACCESS_TOKEN || "").replace(/\s+/g, "");
-  const SPEND_LIMIT = Number(process.env.SPEND_LIMIT || 250000);
+  const SPEND_LIMIT = Number(process.env.SPEND_LIMIT || 200000);
 
-  if (!AD_ACCOUNT_ID || !ACCESS_TOKEN) {
+  if (AD_ACCOUNT_ID === "act_" || !ACCESS_TOKEN) {
     return res.status(500).json({
       error: "Missing configuration: FB_AD_ACCOUNT_ID and FB_ACCESS_TOKEN are required",
     });
@@ -87,7 +89,17 @@ export default async function handler(req, res) {
       }
     }
 
+    let telegram = { sent: false };
+    if (paused_campaigns.length > 0 || req.query?.notify_all === "1") {
+      try {
+        await sendTelegram(reportText(paused_campaigns, SPEND_LIMIT));
+        telegram = { sent: true };
+      } catch {
+        telegram = { sent: false, error: "Telegram sendMessage failed" };
+      }
+    }
     return res.status(200).json({
+      telegram,
       status: "success",
       checked_at: new Date().toISOString(),
       paused_count: paused_campaigns.length,
