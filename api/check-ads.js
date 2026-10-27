@@ -1,3 +1,14 @@
+class FacebookApiError extends Error {
+  constructor(response, data) {
+    const detail = data.error || {};
+    const code = detail.code ?? null;
+    const subcode = detail.error_subcode ?? detail.subcode ?? null;
+    super(`${detail.message ?? `Facebook Graph API request failed (HTTP ${response.status})`} (code: ${code}, subcode: ${subcode})`);
+    this.code = code;
+    this.subcode = subcode;
+  }
+}
+
 export default async function handler(req, res) {
   if (
     process.env.AGENT_SECRET_KEY &&
@@ -6,8 +17,11 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
-  const AD_ACCOUNT_ID = process.env.FB_AD_ACCOUNT_ID;
-  const ACCESS_TOKEN = process.env.FB_ACCESS_TOKEN;
+  const rawAccountId = (process.env.FB_AD_ACCOUNT_ID || "").trim();
+  const AD_ACCOUNT_ID = rawAccountId
+    ? (rawAccountId.startsWith("act_") ? rawAccountId : "act_" + rawAccountId)
+    : "";
+  const ACCESS_TOKEN = (process.env.FB_ACCESS_TOKEN || "").replace(/\s+/g, "");
   const SPEND_LIMIT = Number(process.env.SPEND_LIMIT || 250000);
 
   if (!AD_ACCOUNT_ID || !ACCESS_TOKEN) {
@@ -25,12 +39,12 @@ export default async function handler(req, res) {
       },
     ]));
     const insightsResponse = await fetch(
-      `https://graph.facebook.com/v21.0/${AD_ACCOUNT_ID}/insights?level=campaign&date_preset=today&fields=campaign_id,campaign_name,spend,actions&filtering=${filtering}&access_token=${encodeURIComponent(ACCESS_TOKEN)}`
+      `https://graph.facebook.com/v26.0/${AD_ACCOUNT_ID}/insights?level=campaign&date_preset=today&fields=campaign_id,campaign_name,spend,actions&filtering=${filtering}&access_token=${encodeURIComponent(ACCESS_TOKEN)}`
     );
     const insightsData = await insightsResponse.json();
 
     if (!insightsResponse.ok || insightsData.error) {
-      return res.status(502).json({ error: "Failed to fetch Facebook campaign insights" });
+      throw new FacebookApiError(insightsResponse, insightsData);
     }
 
     const targetActions = new Set([
@@ -53,7 +67,7 @@ export default async function handler(req, res) {
 
       if (spend >= SPEND_LIMIT && results === 0) {
         const pauseResponse = await fetch(
-          `https://graph.facebook.com/v21.0/${camp.campaign_id}`,
+          `https://graph.facebook.com/v26.0/${camp.campaign_id}`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -61,6 +75,9 @@ export default async function handler(req, res) {
           }
         );
         const pauseData = await pauseResponse.json();
+        if (!pauseResponse.ok || pauseData.error) {
+          throw new FacebookApiError(pauseResponse, pauseData);
+        }
 
         if (pauseData.success === true) {
           paused_campaigns.push({
@@ -79,7 +96,10 @@ export default async function handler(req, res) {
       paused_count: paused_campaigns.length,
       paused_campaigns,
     });
-  } catch {
+  } catch (error) {
+    if (error instanceof FacebookApiError) {
+      return res.status(502).json({ error: error.message, code: error.code, subcode: error.subcode });
+    }
     return res.status(502).json({ error: "Failed to communicate with Facebook Graph API" });
   }
 }
