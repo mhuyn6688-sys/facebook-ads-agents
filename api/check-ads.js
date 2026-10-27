@@ -17,10 +17,7 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: "Unauthorized" });
   }
 
-  const rawAccountId = (process.env.FB_AD_ACCOUNT_ID || "").trim();
-  const AD_ACCOUNT_ID = rawAccountId
-    ? (rawAccountId.startsWith("act_") ? rawAccountId : "act_" + rawAccountId)
-    : "";
+  const AD_ACCOUNT_ID = "act_" + String(process.env.FB_AD_ACCOUNT_ID || "").replace(/\D+/g, "");
   const ACCESS_TOKEN = (process.env.FB_ACCESS_TOKEN || "").replace(/\s+/g, "");
   const SPEND_LIMIT = Number(process.env.SPEND_LIMIT || 250000);
 
