@@ -19,10 +19,7 @@ const TOOL = {
 };
 
 async function checkFacebookAdsRules() {
-  const rawAccountId = (process.env.FB_AD_ACCOUNT_ID || "").trim();
-  const AD_ACCOUNT_ID = rawAccountId
-    ? (rawAccountId.startsWith("act_") ? rawAccountId : "act_" + rawAccountId)
-    : "";
+  const AD_ACCOUNT_ID = "act_" + String(process.env.FB_AD_ACCOUNT_ID || "").replace(/\D+/g, "");
   const ACCESS_TOKEN = (process.env.FB_ACCESS_TOKEN || "").replace(/\s+/g, "");
   const SPEND_LIMIT = Number(process.env.SPEND_LIMIT || 200000);
   if (!AD_ACCOUNT_ID || !ACCESS_TOKEN) {
