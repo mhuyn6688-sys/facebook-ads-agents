@@ -1,92 +1,12 @@
-class FacebookApiError extends Error {
-  constructor(response, data) {
-    const detail = data.error || {};
-    const code = detail.code ?? null;
-    const subcode = detail.error_subcode ?? detail.subcode ?? null;
-    super(`${detail.message ?? `Facebook Graph API request failed (HTTP ${response.status})`} (code: ${code}, subcode: ${subcode})`);
-    this.code = code;
-    this.subcode = subcode;
-  }
-}
-
+import { optimize, FacebookApiError } from "../lib/facebook.js";
 const PROTOCOL_VERSIONS = ["2025-11-25", "2025-06-18", "2025-03-26"];
 const TOOL_NAME = "checkFacebookAdsRules";
 const TOOL = {
   name: TOOL_NAME,
-  description: "Kiểm tra các chiến dịch Facebook Ads đang ACTIVE trong ngày hôm nay và tự động tạm dừng nếu chi tiêu chạm ngưỡng SPEND_LIMIT nhưng 0 kết quả",
+  description: "Kiểm tra CBO ACTIVE hôm nay: tự tắt khi chi >=200.000 đ và 0 kết quả hoặc giá >=50.000 đ; đề xuất tăng CBO khi >=5 kết quả và giá <35.000 đ",
   inputSchema: { type: "object", properties: {}, additionalProperties: false },
   annotations: { readOnlyHint: false, destructiveHint: true, openWorldHint: true },
 };
-
-async function checkFacebookAdsRules() {
-  const AD_ACCOUNT_ID = "act_" + String(process.env.FB_AD_ACCOUNT_ID || "").replace(/\D+/g, "");
-  const ACCESS_TOKEN = (process.env.FB_ACCESS_TOKEN || "").replace(/\s+/g, "");
-  const SPEND_LIMIT = Number(process.env.SPEND_LIMIT || 200000);
-  if (!AD_ACCOUNT_ID || !ACCESS_TOKEN) {
-    throw new Error("Missing configuration: FB_AD_ACCOUNT_ID and FB_ACCESS_TOKEN are required");
-  }
-  if (!Number.isFinite(SPEND_LIMIT) || SPEND_LIMIT < 0) {
-    throw new Error("Invalid configuration: SPEND_LIMIT must be a non-negative number");
-  }
-
-  const filtering = encodeURIComponent(JSON.stringify([
-    { field: "campaign.effective_status", operator: "IN", value: ["ACTIVE"] },
-  ]));
-  const insightsResponse = await fetch(
-    `https://graph.facebook.com/v26.0/${AD_ACCOUNT_ID}/insights?level=campaign&date_preset=today&fields=campaign_id,campaign_name,spend,actions&filtering=${filtering}&access_token=${encodeURIComponent(ACCESS_TOKEN)}`
-  );
-  const insightsData = await insightsResponse.json();
-  if (!insightsResponse.ok || insightsData.error) {
-    throw new FacebookApiError(insightsResponse, insightsData);
-  }
-  if (!Array.isArray(insightsData.data)) {
-    throw new Error("Failed to fetch Facebook campaign insights");
-  }
-
-  const targetActions = new Set([
-    "onsite_conversion.messaging_conversation_started_7d",
-    "lead",
-    "purchase",
-    "omni_purchase",
-  ]);
-  const paused_campaigns = [];
-  for (const camp of insightsData.data) {
-    const spend = parseFloat(camp.spend);
-    const results = (camp.actions || []).reduce(
-      (total, action) => targetActions.has(action.action_type)
-        ? total + (parseFloat(action.value) || 0) : total,
-      0
-    );
-    if (spend >= SPEND_LIMIT && results === 0) {
-      const pauseResponse = await fetch(
-        `https://graph.facebook.com/v26.0/${camp.campaign_id}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: "PAUSED", access_token: ACCESS_TOKEN }),
-        }
-      );
-      const pauseData = await pauseResponse.json();
-        if (!pauseResponse.ok || pauseData.error) {
-          throw new FacebookApiError(pauseResponse, pauseData);
-        }
-      if (pauseData.success === true) {
-        paused_campaigns.push({
-          id: camp.campaign_id,
-          name: camp.campaign_name,
-          spend,
-          formatted_spend: `${Math.round(spend).toLocaleString("vi-VN")} đ`,
-        });
-      }
-    }
-  }
-  return {
-    status: "success",
-    checked_at: new Date().toISOString(),
-    paused_count: paused_campaigns.length,
-    paused_campaigns,
-  };
-}
 
 function rpcError(res, status, id, code, message) {
   return res.status(status).json({ jsonrpc: "2.0", id, error: { code, message } });
@@ -184,17 +104,11 @@ export default async function handler(req, res) {
         return rpcError(res, 200, id, -32602, "Tool accepts only an empty arguments object");
       }
       try {
-        const result = await checkFacebookAdsRules();
+        const result = await optimize();
         return reply({ content: [{ type: "text", text: JSON.stringify(result) }] });
       } catch (error) {
         // Preserve Facebook API diagnostics; keep unexpected transport errors generic.
-        const safeMessages = new Set([
-          "Missing configuration: FB_AD_ACCOUNT_ID and FB_ACCESS_TOKEN are required",
-          "Invalid configuration: SPEND_LIMIT must be a non-negative number",
-          "Failed to fetch Facebook campaign insights",
-        ]);
-        const message = error instanceof FacebookApiError || safeMessages.has(error.message)
-          ? error.message : "Failed to communicate with Facebook Graph API";
+        const message = error.message;
         return reply({
           isError: true,
           content: [{ type: "text", text: JSON.stringify({ error: message, ...(error instanceof FacebookApiError ? { code: error.code, subcode: error.subcode } : {}) }) }],
