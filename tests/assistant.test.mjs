@@ -73,11 +73,11 @@ console.log("PASS assistant: natural chat/memory, live-data tool loop, explicit 
 
 process.env.AI_PROVIDER="gemini";process.env.GEMINI_API_KEY="test-google-key";
 globalThis.fetch=async(url,opts)=>{
- assert.equal(url,"https://generativelanguage.googleapis.com/v1beta/openai/chat/completions");
- assert.equal(opts.headers.Authorization,"Bearer test-google-key");
- const body=JSON.parse(opts.body);assert.equal(body.model,"gemini-2.5-flash-lite");assert.ok(body.tools.length>0);
+ assert.ok(url.endsWith("/models/gemini-2.5-flash-lite:generateContent"));
+ assert.equal(opts.headers["x-goog-api-key"],"test-google-key");
+ const body=JSON.parse(opts.body);assert.ok(body.generationConfig);assert.ok(body.tools.length>0);
  assert.ok(!JSON.stringify(body).includes("test-google-key"));
- return {ok:true,json:async()=>({choices:[{message:{content:"Gemini trả lời"}}]})};
+ return {ok:true,json:async()=>({candidates:[{content:{parts:[{text:"Gemini trả lời"}]}}]})};
 };
 assert.equal((await gatewayCompletion([],"must-not-use-vercel-oidc")).content,"Gemini trả lời");
 let attemptsFree=0;
@@ -89,3 +89,6 @@ delete process.env.GEMINI_API_KEY;
 await assert.rejects(()=>gatewayCompletion([],"vercel-credential"),error=>error.provider==="gemini"&&error.code==="missing_configuration");
 assert.equal(attemptsFree,1);
 console.log("PASS free Gemini: direct Google endpoint, tool calling payload, private API key, quota handling, no paid fallback");
+
+
+
