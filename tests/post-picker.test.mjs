@@ -14,20 +14,21 @@ globalThis.fetch=async(url,opts={})=>{
   data=p==="1/copies"?{copied_campaign_id:"99"}:p==="act_123/adcreatives"?{id:"777"}:{success:true};
  }else if(p==="act_123")data={currency:"VND"};
  else if(p==="act_123/campaigns")data={data:[{id:"1",name:"Template",created_time:"2026-11-09",daily_budget:"200000",effective_status:"ACTIVE"}]};
- else if(p==="1"||p==="99")data={id:p,name:"Template",account_id:"123",daily_budget:"200000"};
+ else if(p==="1"||p==="2"||p==="99")data={id:p,name:"Template",account_id:"123",daily_budget:"200000"};
  else if(p==="1/ads")data={data:[{id:"11",name:"Used Ad",creative:{id:"555",object_story_id:"888_111",body:"Original content"}}]};
  else if(p==="888/published_posts"){
   if(mode==="fallback"||(mode==="page-token"&&opts.headers.Authorization!=="Bearer page-secret"))
    return {ok:false,status:403,json:async()=>({error:{message:"Page permission not available",code:10}})};
   data={data:[{id:"888_222",message:"A new published post",permalink_url:"https://facebook.com/888/posts/222",created_time:"2026-11-08"}],paging:{next:"https://ignored",cursors:{after:"cursor"}}};
- }else if(p==="me/accounts")data={data:mode==="page-token"?[{id:"888",access_token:"page-secret"}]:[]};
+ }else if(p==="act_123/ads")data={data:[{id:"22",name:"Second CBO post",campaign_id:"2",creative:{id:"666",object_story_id:"888_333",body:"Second campaign content"}}]};
+ else if(p==="me/accounts")data={data:mode==="page-token"?[{id:"888",access_token:"page-secret"}]:[]};
  else if(p==="99/ads")data={data:[{id:"991"}]};
  else if(p==="99/adsets")data={data:[{id:"992"}]};
  else throw Error("Unmocked "+p);
  return {ok:true,status:200,json:async()=>data};
 };
 const page=await browsePosts();assert.equal(page.page_id,"888");assert.ok(page.posts.some(p=>p.id==="888_222"));assert.ok(page.posts.some(p=>p.creative_id==="555"));
-mode="fallback";const fallback=await browsePosts();assert.ok(fallback.page_error);assert.equal(fallback.posts[0].id,"888_111");
+mode="fallback";const fallback=await browsePosts();assert.ok(fallback.page_error);assert.equal(fallback.posts[0].id,"888_111");assert.ok(fallback.posts.some(p=>p.id==="888_333"&&p.template_id==="2"));
 mode="page-token";const pageToken=await browsePosts();assert.ok(pageToken.posts.some(p=>p.id==="888_222"));assert.ok(!JSON.stringify(pageToken).includes("page-secret"));
 mode="page";
 let state={},version=0;
