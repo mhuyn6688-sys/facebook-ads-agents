@@ -37,7 +37,7 @@ await ensureBotMenu(true);await ensureBotMenu();assert.equal(telegram.filter(t=>
 assert.equal(telegram.find(t=>t.method==="setChatMenuButton").body.menu_button.type,"commands");
 assert.equal(REPLY_KEYBOARD.resize_keyboard,true);assert.equal(REPLY_KEYBOARD.is_persistent,true);
 assert.equal(KEYBOARD_ROWS.length,4);assert.ok(KEYBOARD_ROWS.every(r=>r.length===2));
-for(const label of KEYBOARD_ROWS.flat())assert.ok(await command(label));
+for(const label of KEYBOARD_ROWS.flat())assert.ok(await command(label,{openPostPicker:async()=>({text:"PICKER",cards:[]})}));
 assert.ok((await command("/menu")).text.includes("BẢNG ĐIỀU KHIỂN"));
 assert.ok((await command("/start")).text.includes("BẢNG ĐIỀU KHIỂN"));
 assert.ok((await command("không biết dùng")).cards[0].markup.inline_keyboard);
@@ -53,7 +53,7 @@ const sends=telegram.filter(t=>t.method==="sendMessage");
 assert.ok(sends[0].body.reply_markup.is_persistent);
 assert.ok(sends[1].body.reply_markup.inline_keyboard);
 assert.ok(!sends[1].body.reply_markup.keyboard);
-const initial=await callbackAction("ui:setads");assert.equal(initial.cards[0].text,CREATE_PROMPT);
+const initial=await callbackAction("ui:setads_manual");assert.equal(initial.cards[0].text,CREATE_PROMPT);
 function reply(prior,text,override={}){return {text,reply_to_message:{text:prior,date:Math.floor(Date.now()/1000),from:{id:999,is_bot:true},...override}}}
 const step2=await guidedReply(reply(CREATE_PROMPT,"https://facebook.com/888/posts/123/"));
 assert.ok(step2.cards[0].text.includes("Bài viết: 888_123"));
@@ -86,3 +86,6 @@ writes=[];await run({callback_query:{id:"bad",from:{id:0},message:{chat:{id:7162
 assert.equal(writes.length,0);
 assert.equal((await run({},{})).code,401);
 console.log("PASS menus: exact commands, menu auto-registration/cache, persistent keyboard, all text/navigation routes, per-campaign actions, guided creation and budget, expired/forged prompt rejection, callback authorization and dashboard delivery");
+
+
+

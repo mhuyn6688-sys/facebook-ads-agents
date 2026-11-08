@@ -105,3 +105,12 @@ Create an API key in Google AI Studio using a project on the Free tier, without 
 The same conversation memory and restricted Facebook tools are used. A 429 quota response stops the turn with a free-quota explanation. There is no automatic fallback to a paid provider and no code that purchases credits.
 Google controls availability and free-tier limits, and free-tier data may be used to improve its products according to its terms. This is not an unlimited/free hosting guarantee; Vercel Functions and private Blob retain their own plan quotas.
 AI_PROVIDER=vercel remains an explicit optional configuration only. Production is set to gemini.
+
+## Pick a post without copying IDs
+The primary Create Campaign button and /setads with no arguments now open a post picker. /baiviet and natural messages asking to view/select posts also open it.
+The picker displays published posts from the Page tied to a valid recent CBO template, with excerpt, View Post and Use This Post buttons. It first uses the configured Facebook token; if needed it tries a matching Page token from me/accounts or FB_PAGE_ACCESS_TOKEN. Page tokens never leave server-side code.
+If published-post access is unavailable, the picker lists reusable posts/creatives already present in that template's ads. It clearly labels that fallback instead of claiming to list all Page posts.
+Selecting a post only opens the budget/name prompts. It does not copy or activate a campaign. The selected template and existing creative, where available, are carried through the bot-authored prompts and revalidated before writes.
+Picker state has its own private Blob namespace, a random nonce, a 30-minute expiry and bounded batches; old buttons are rejected after refresh. Pagination uses only the server-returned cursor.
+Manual links and existing /setads syntax remain available. New creative creation occurs before any campaign duplication. On a creative failure no campaign is copied; Meta's exact error and stage are reported without guessing the cause. Copied campaigns remain PAUSED.
+Run node tests/post-picker.test.mjs alongside the existing regression suites.

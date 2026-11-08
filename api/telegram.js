@@ -1,11 +1,12 @@
+import { openPostPicker, selectPostCallback, manualPostEntry } from "../lib/post-picker.js";
 import { assistantReply, assistantError } from "../lib/assistant.js";
 import { dashboard, TEXT_ROUTES, prompt, CREATE_PROMPT } from "../lib/ui.js";
 import { telegramConfig, webhookSecret, telegramApi, ensureBotMenu } from "../lib/telegram.js";
 import { optimize, snapshot, budget, duplicate, setAds, setStatus, setAdStatus, money, campaign,
   scanAds, resurrection, accountHealth, accountReport, accountReportText, parsePostId, vnd } from "../lib/facebook.js";
 import { optimizationOutput, campaignCard, adCard, suggestionOutput, sendOutput } from "../lib/reports.js";
-export const HELP = "💬 Bạn có thể nhắn bình thường, ví dụ: Hôm nay cam nào đắt? Giải thích vì sao chưa có tin nhắn? Muốn thay đổi cụ thể, hãy nói tên cam và việc cần làm. Mình nhớ hội thoại gần đây trong bộ nhớ riêng tư.\n\n🎛 DÙNG BOT BẰNG NÚT BẤM\nChọn bàn phím tiếng Việt phía dưới hoặc mở Menu → menu.\n• Danh sách Cam: Vít +20%, Bật/Tắt, Nhân bản, Đổi ngân sách.\n• Đổi ngân sách: bấm nút dưới Cam rồi nhập số tiền VND.\n• Lên Cam mới: bấm “Tạo Cam mới từ bài viết”, trả lời lần lượt link/ID bài, ngân sách và tên. Cam mới giữ PAUSED; bấm Bật khi sẵn sàng.\n• Trong phần nhập liệu, bấm nút chức năng khác để rời quy trình.\n\n/help hoặc /start — Hướng dẫn\n/check hoặc kiểm tra — Quét và tự tắt theo quy tắc\n/ds — Danh sách chiến dịch ACTIVE hôm nay\n/dexuat — Đề xuất CBO, nội dung và tệp\n/vit Campaign_ID — Tăng ngân sách CBO 20%\n/ngansach Campaign_ID Số_tiền_VND — Đặt ngân sách ngày\n/nhanban Campaign_ID [Ngân_sách_VND] — Sao chép CBO, để PAUSED\n/setads Post_ID Ngân_sách_VND Tên_chiến_dịch — Sao chép mẫu CBO mới nhất, đổi bài viết, để PAUSED\n/bat Campaign_ID — Bật chiến dịch\n/tat Campaign_ID — Tắt chiến dịch\n\nNhập số tiền VND nguyên, không dùng dấu phân cách.\nCắt lỗ: chi >=200.000 đ và 0 kết quả hoặc giá >=50.000 đ/kết quả.\nĐang rẻ: >=5 kết quả, giá <35.000 đ; đề xuất +20% hoặc nhân bản.\nKết quả ưu tiên tin nhắn; nếu thiếu dùng loại kết quả thay thế ghi trong /ds.\nChỉ hỗ trợ tài khoản VND.\n\nLỆNH NÂNG CAO\n/quetad — Quét Ad yếu trong chiến dịch CBO ACTIVE, bấm để tắt riêng Ad\n/hoisinh — Chiến dịch PAUSED có chi tiêu 3 ngày, bấm để bật lại\n/taikhoan — Sức khỏe tài khoản, Ad bị từ chối/có vấn đề\n/baocao — Tổng kết hôm nay và so sánh 7 ngày\n/setads URL_bài_viết Ngân_sách_VND Tên — Nhận link posts/videos/story_fbid/fbid hoặc ID số\nNút bấm: Vít +20%, Tắt/Bật, Nhân bản.\nBảo vệ công thần: >=15 kết quả và giá <35.000 đ trong 3 ngày; cảnh báo thay vì tự tắt.\nGiữ theo dõi không miễn quy tắc vĩnh viễn. Tổng kết tự động 00:10 giờ Việt Nam cho ngày vừa kết thúc.";
-export async function command(text) {
+export const HELP = "📚 Lên Cam dễ hơn: bấm Lên Cam hoặc nhắn cho tôi chọn bài. Bot liệt kê bài để bạn bấm Dùng bài này, rồi nhập ngân sách và tên. /baiviet cũng mở danh sách.\n\n💬 Bạn có thể nhắn bình thường, ví dụ: Hôm nay cam nào đắt? Giải thích vì sao chưa có tin nhắn? Muốn thay đổi cụ thể, hãy nói tên cam và việc cần làm. Mình nhớ hội thoại gần đây trong bộ nhớ riêng tư.\n\n🎛 DÙNG BOT BẰNG NÚT BẤM\nChọn bàn phím tiếng Việt phía dưới hoặc mở Menu → menu.\n• Danh sách Cam: Vít +20%, Bật/Tắt, Nhân bản, Đổi ngân sách.\n• Đổi ngân sách: bấm nút dưới Cam rồi nhập số tiền VND.\n• Lên Cam mới: bấm “Tạo Cam mới từ bài viết”, trả lời lần lượt link/ID bài, ngân sách và tên. Cam mới giữ PAUSED; bấm Bật khi sẵn sàng.\n• Trong phần nhập liệu, bấm nút chức năng khác để rời quy trình.\n\n/help hoặc /start — Hướng dẫn\n/check hoặc kiểm tra — Quét và tự tắt theo quy tắc\n/ds — Danh sách chiến dịch ACTIVE hôm nay\n/dexuat — Đề xuất CBO, nội dung và tệp\n/vit Campaign_ID — Tăng ngân sách CBO 20%\n/ngansach Campaign_ID Số_tiền_VND — Đặt ngân sách ngày\n/nhanban Campaign_ID [Ngân_sách_VND] — Sao chép CBO, để PAUSED\n/setads Post_ID Ngân_sách_VND Tên_chiến_dịch — Sao chép mẫu CBO mới nhất, đổi bài viết, để PAUSED\n/bat Campaign_ID — Bật chiến dịch\n/tat Campaign_ID — Tắt chiến dịch\n\nNhập số tiền VND nguyên, không dùng dấu phân cách.\nCắt lỗ: chi >=200.000 đ và 0 kết quả hoặc giá >=50.000 đ/kết quả.\nĐang rẻ: >=5 kết quả, giá <35.000 đ; đề xuất +20% hoặc nhân bản.\nKết quả ưu tiên tin nhắn; nếu thiếu dùng loại kết quả thay thế ghi trong /ds.\nChỉ hỗ trợ tài khoản VND.\n\nLỆNH NÂNG CAO\n/quetad — Quét Ad yếu trong chiến dịch CBO ACTIVE, bấm để tắt riêng Ad\n/hoisinh — Chiến dịch PAUSED có chi tiêu 3 ngày, bấm để bật lại\n/taikhoan — Sức khỏe tài khoản, Ad bị từ chối/có vấn đề\n/baocao — Tổng kết hôm nay và so sánh 7 ngày\n/setads URL_bài_viết Ngân_sách_VND Tên — Nhận link posts/videos/story_fbid/fbid hoặc ID số\nNút bấm: Vít +20%, Tắt/Bật, Nhân bản.\nBảo vệ công thần: >=15 kết quả và giá <35.000 đ trong 3 ngày; cảnh báo thay vì tự tắt.\nGiữ theo dõi không miễn quy tắc vĩnh viễn. Tổng kết tự động 00:10 giờ Việt Nam cho ngày vừa kết thúc.";
+export async function command(text, context = {}) {
   text = TEXT_ROUTES[String(text).trim().normalize("NFC")] || text;
   const words = text.trim().split(/\s+/);
   const name = words.shift().split("@")[0].toLowerCase();
@@ -63,7 +64,9 @@ export async function command(text) {
       return { text: "Đã nhân bản CBO, đang PAUSED.",
         cards: [campaignCard({ id, effective_status: "PAUSED" }, "Campaign_ID: " + id + "\nBấm Bật khi sẵn sàng.")] };
     }
+    case "/baiviet": return (context.openPostPicker || openPostPicker)();
     case "/setads": {
+      if (words.length === 0) return (context.openPostPicker || openPostPicker)();
       if (words.length < 3) throw Error("Dùng /setads Post_ID Ngân_sách_VND Tên_chiến_dịch");
       const id = await setAds(words[0], words[1], words.slice(2).join(" "));
       return createdOutput(id);
@@ -87,9 +90,11 @@ function once(key) {
   if (seen.size > 2000) seen.delete(seen.keys().next().value);
   return true;
 }
-export async function callbackAction(data) {
+export async function callbackAction(data, context = {}) {
+  if (/^(pickpost|postsnext):/.test(data)) return selectPostCallback(data);
+  if (data === "ui:setads_manual") return manualPostEntry();
   const navigation = /^ui:(menu|check|ds|dexuat|baocao|quetad|hoisinh|taikhoan|help|setads)$/.exec(String(data || ""));
-  if (navigation) return navigation[1] === "setads" ? prompt(CREATE_PROMPT) : command("/" + navigation[1]);
+  if (navigation) return navigation[1] === "setads" ? (context.openPostPicker || openPostPicker)() : command("/" + navigation[1], context);
   const match = /^(vit|tat|bat|nhanban|tatad|keep|budget):(\d+)$/.exec(String(data || ""));
   if (!match) throw Error("Nút bấm không hợp lệ");
   const [, action, id] = match;
@@ -124,6 +129,8 @@ export async function guidedReply(message) {
   const budgetId = prior.match(/^💰 Đổi ngân sách CBO\nCampaign_ID: (\d+)\n/);
   const post = prior.match(/\nBài viết: (\d+(?:_\d+)?)\n/);
   const amount = prior.match(/\nNgân sách VND: (\d+)\n/);
+  const templateId = prior.match(/\nMẫu CBO: (\d+)\n/);
+  const creativeId = prior.match(/\nMẫu creative: (\d+)\n/);
   try {
     if (budgetId) {
       const c = await budget(budgetId[1], vnd(text));
@@ -138,12 +145,14 @@ export async function guidedReply(message) {
     if (prior.startsWith("🚀 Lên Cam mới — Bước 2/3\n") && post) {
       const value = vnd(text);
       return prompt("🚀 Lên Cam mới — Bước 3/3\nBài viết: " + post[1] +
+        (templateId ? "\nMẫu CBO: " + templateId[1] : "") +
+        (creativeId ? "\nMẫu creative: " + creativeId[1] : "") +
         "\nNgân sách VND: " + value +
         "\nTrả lời tin này bằng tên chiến dịch mới. Chiến dịch sẽ được tạo PAUSED.");
     }
     if (prior.startsWith("🚀 Lên Cam mới — Bước 3/3\n") && post && amount) {
       if (!text || text.length > 120 || /[\r\n]/.test(text)) throw Error("Tên cần có 1–120 ký tự trên một dòng.");
-      const id = await setAds(post[1], amount[1], text);
+      const id = await setAds(post[1], amount[1], text, {templateId:templateId?.[1],creativeId:creativeId?.[1]});
       return createdOutput(id);
     }
   } catch(e) {
@@ -171,7 +180,7 @@ export default async function handler(req, res) {
       });
     } catch { /* An expired callback answer must not expose bot credentials. */ }
     if (!allowed) return res.status(200).json({ ok: true });
-    const navigation = /^(ui:|budget:)/.test(callback.data);
+    const navigation = /^(ui:|budget:|postsnext:)/.test(callback.data);
     const key = "button:" + callback.message.message_id + ":" + callback.data;
     if (!navigation && !once(key)) return res.status(200).json({ ok: true });
     let output;
@@ -183,7 +192,7 @@ export default async function handler(req, res) {
     } catch(e) { output = "Không hoàn tất thao tác: " + e.message; }
     try { await sendOutput(output); }
     catch { console.error("Telegram callback confirmation failed", update.update_id); }
-    return res.status(200).json({ ok: true });
+    return res.status(200).json({ ok: true, ...(output?.picker ? {post_picker:output.picker} : {}) });
   }
   const message = update?.message;
   if (String(message?.chat?.id) !== chatId || !message?.text) return res.status(200).json({ ok: true });
@@ -195,6 +204,7 @@ export default async function handler(req, res) {
       output = await command(message.text);
     else {
       output = await guidedReply(message);
+      if (!output && /(chọn|xem|liệt kê|danh sách).*(bài|post)/i.test(message.text)) output = await openPostPicker();
       if (!output) {
         await telegramApi("sendChatAction", { chat_id: chatId, action: "typing" }).catch(() => {});
         usedAssistant = true;
@@ -215,5 +225,5 @@ export default async function handler(req, res) {
     console.error("Telegram reply delivery failed", update.update_id);
     return res.status(200).json({ ok: true, delivery_error: true });
   }
-  return res.status(200).json({ ok: true, ...(usedAssistant ? { assistant: assistantMeta || {ok:false} } : {}) });
+  return res.status(200).json({ ok: true, ...(output?.picker ? {post_picker:output.picker} : {}), ...(usedAssistant ? { assistant: assistantMeta || {ok:false} } : {}) });
 }
