@@ -1,9 +1,10 @@
+import { assistantReply, assistantError } from "../lib/assistant.js";
 import { dashboard, TEXT_ROUTES, prompt, CREATE_PROMPT } from "../lib/ui.js";
 import { telegramConfig, webhookSecret, telegramApi, ensureBotMenu } from "../lib/telegram.js";
 import { optimize, snapshot, budget, duplicate, setAds, setStatus, setAdStatus, money, campaign,
   scanAds, resurrection, accountHealth, accountReport, accountReportText, parsePostId, vnd } from "../lib/facebook.js";
 import { optimizationOutput, campaignCard, adCard, suggestionOutput, sendOutput } from "../lib/reports.js";
-export const HELP = "🎛 DÙNG BOT BẰNG NÚT BẤM\nChọn bàn phím tiếng Việt phía dưới hoặc mở Menu → menu.\n• Danh sách Cam: Vít +20%, Bật/Tắt, Nhân bản, Đổi ngân sách.\n• Đổi ngân sách: bấm nút dưới Cam rồi nhập số tiền VND.\n• Lên Cam mới: bấm “Tạo Cam mới từ bài viết”, trả lời lần lượt link/ID bài, ngân sách và tên. Cam mới giữ PAUSED; bấm Bật khi sẵn sàng.\n• Trong phần nhập liệu, bấm nút chức năng khác để rời quy trình.\n\n/help hoặc /start — Hướng dẫn\n/check hoặc kiểm tra — Quét và tự tắt theo quy tắc\n/ds — Danh sách chiến dịch ACTIVE hôm nay\n/dexuat — Đề xuất CBO, nội dung và tệp\n/vit Campaign_ID — Tăng ngân sách CBO 20%\n/ngansach Campaign_ID Số_tiền_VND — Đặt ngân sách ngày\n/nhanban Campaign_ID [Ngân_sách_VND] — Sao chép CBO, để PAUSED\n/setads Post_ID Ngân_sách_VND Tên_chiến_dịch — Sao chép mẫu CBO mới nhất, đổi bài viết, để PAUSED\n/bat Campaign_ID — Bật chiến dịch\n/tat Campaign_ID — Tắt chiến dịch\n\nNhập số tiền VND nguyên, không dùng dấu phân cách.\nCắt lỗ: chi >=200.000 đ và 0 kết quả hoặc giá >=50.000 đ/kết quả.\nĐang rẻ: >=5 kết quả, giá <35.000 đ; đề xuất +20% hoặc nhân bản.\nKết quả ưu tiên tin nhắn; nếu thiếu dùng loại kết quả thay thế ghi trong /ds.\nChỉ hỗ trợ tài khoản VND.\n\nLỆNH NÂNG CAO\n/quetad — Quét Ad yếu trong chiến dịch CBO ACTIVE, bấm để tắt riêng Ad\n/hoisinh — Chiến dịch PAUSED có chi tiêu 3 ngày, bấm để bật lại\n/taikhoan — Sức khỏe tài khoản, Ad bị từ chối/có vấn đề\n/baocao — Tổng kết hôm nay và so sánh 7 ngày\n/setads URL_bài_viết Ngân_sách_VND Tên — Nhận link posts/videos/story_fbid/fbid hoặc ID số\nNút bấm: Vít +20%, Tắt/Bật, Nhân bản.\nBảo vệ công thần: >=15 kết quả và giá <35.000 đ trong 3 ngày; cảnh báo thay vì tự tắt.\nGiữ theo dõi không miễn quy tắc vĩnh viễn. Tổng kết tự động 00:10 giờ Việt Nam cho ngày vừa kết thúc.";
+export const HELP = "💬 Bạn có thể nhắn bình thường, ví dụ: Hôm nay cam nào đắt? Giải thích vì sao chưa có tin nhắn? Muốn thay đổi cụ thể, hãy nói tên cam và việc cần làm. Mình nhớ hội thoại gần đây trong bộ nhớ riêng tư.\n\n🎛 DÙNG BOT BẰNG NÚT BẤM\nChọn bàn phím tiếng Việt phía dưới hoặc mở Menu → menu.\n• Danh sách Cam: Vít +20%, Bật/Tắt, Nhân bản, Đổi ngân sách.\n• Đổi ngân sách: bấm nút dưới Cam rồi nhập số tiền VND.\n• Lên Cam mới: bấm “Tạo Cam mới từ bài viết”, trả lời lần lượt link/ID bài, ngân sách và tên. Cam mới giữ PAUSED; bấm Bật khi sẵn sàng.\n• Trong phần nhập liệu, bấm nút chức năng khác để rời quy trình.\n\n/help hoặc /start — Hướng dẫn\n/check hoặc kiểm tra — Quét và tự tắt theo quy tắc\n/ds — Danh sách chiến dịch ACTIVE hôm nay\n/dexuat — Đề xuất CBO, nội dung và tệp\n/vit Campaign_ID — Tăng ngân sách CBO 20%\n/ngansach Campaign_ID Số_tiền_VND — Đặt ngân sách ngày\n/nhanban Campaign_ID [Ngân_sách_VND] — Sao chép CBO, để PAUSED\n/setads Post_ID Ngân_sách_VND Tên_chiến_dịch — Sao chép mẫu CBO mới nhất, đổi bài viết, để PAUSED\n/bat Campaign_ID — Bật chiến dịch\n/tat Campaign_ID — Tắt chiến dịch\n\nNhập số tiền VND nguyên, không dùng dấu phân cách.\nCắt lỗ: chi >=200.000 đ và 0 kết quả hoặc giá >=50.000 đ/kết quả.\nĐang rẻ: >=5 kết quả, giá <35.000 đ; đề xuất +20% hoặc nhân bản.\nKết quả ưu tiên tin nhắn; nếu thiếu dùng loại kết quả thay thế ghi trong /ds.\nChỉ hỗ trợ tài khoản VND.\n\nLỆNH NÂNG CAO\n/quetad — Quét Ad yếu trong chiến dịch CBO ACTIVE, bấm để tắt riêng Ad\n/hoisinh — Chiến dịch PAUSED có chi tiêu 3 ngày, bấm để bật lại\n/taikhoan — Sức khỏe tài khoản, Ad bị từ chối/có vấn đề\n/baocao — Tổng kết hôm nay và so sánh 7 ngày\n/setads URL_bài_viết Ngân_sách_VND Tên — Nhận link posts/videos/story_fbid/fbid hoặc ID số\nNút bấm: Vít +20%, Tắt/Bật, Nhân bản.\nBảo vệ công thần: >=15 kết quả và giá <35.000 đ trong 3 ngày; cảnh báo thay vì tự tắt.\nGiữ theo dõi không miễn quy tắc vĩnh viễn. Tổng kết tự động 00:10 giờ Việt Nam cho ngày vừa kết thúc.";
 export async function command(text) {
   text = TEXT_ROUTES[String(text).trim().normalize("NFC")] || text;
   const words = text.trim().split(/\s+/);
@@ -187,17 +188,32 @@ export default async function handler(req, res) {
   const message = update?.message;
   if (String(message?.chat?.id) !== chatId || !message?.text) return res.status(200).json({ ok: true });
   if (update.update_id !== undefined && !once("update:" + update.update_id)) return res.status(200).json({ ok: true });
-  let output;
+  let output, assistantMeta;
+  let usedAssistant = false;
   try {
     if (TEXT_ROUTES[message.text.trim().normalize("NFC")] || message.text.trim().startsWith("/"))
       output = await command(message.text);
-    else output = await guidedReply(message) || await command(message.text);
+    else {
+      output = await guidedReply(message);
+      if (!output) {
+        await telegramApi("sendChatAction", { chat_id: chatId, action: "typing" }).catch(() => {});
+        usedAssistant = true;
+        output = await assistantReply({
+          chatId, botId: telegramConfig().token.split(":")[0],
+          text: message.text, updateId: update.update_id,
+          credential: req.headers["x-vercel-oidc-token"],
+          readOnly: Boolean(message.forward_origin),
+          onResult: meta => { assistantMeta = meta; },
+        });
+      }
+    }
   }
-  catch(e) { output = "Không hoàn tất lệnh: " + e.message; }
+  catch(e) { output = assistantError(e); }
+  if (output === null || output === undefined) return res.status(200).json({ok:true});
   try { await sendOutput(output); }
   catch {
     console.error("Telegram reply delivery failed", update.update_id);
     return res.status(200).json({ ok: true, delivery_error: true });
   }
-  return res.status(200).json({ ok: true });
+  return res.status(200).json({ ok: true, ...(usedAssistant ? { assistant: assistantMeta || {ok:false} } : {}) });
 }

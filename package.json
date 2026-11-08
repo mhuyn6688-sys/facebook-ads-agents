@@ -1,5 +1,8 @@
 {
   "name": "fb-ads-agent",
   "version": "1.0.0",
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "@vercel/blob": "2.8.2"
+  }
 }

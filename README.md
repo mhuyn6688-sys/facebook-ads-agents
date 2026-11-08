@@ -86,3 +86,15 @@ Account health requests funding_source_details separately; a missing permission 
 Run both:
 - node tests/advanced.test.mjs
 - node tests/menu.test.mjs
+
+## Natural-language assistant
+Ordinary text now goes to a tool-calling language model instead of the fixed command/menu fallback. Explicit slash commands, eight Vietnamese shortcuts, callback buttons and guided forms still use the deterministic handlers.
+Examples: "Hôm nay cam nào đang đắt?", "Vì sao mới tiêu ít mà chưa có tin nhắn?", "Đổi ngân sách Cam Alpha thành 300k", "Tắt Cam Alpha đi".
+The assistant can explain data, discuss strategy, write copy, and use named tools to read or change campaigns. It has no arbitrary URL, shell or general Graph API tool.
+Model: AI_GATEWAY_MODEL must be a tool-capable provider/model ID from the live AI Gateway catalog. Authentication uses the current invocation x-vercel-oidc-token header; AI_GATEWAY_API_KEY is an optional server-only override. Gateway may require payment verification or credits; code does not purchase credits or raise budgets.
+A private Vercel Blob store connected to the project supplies BLOB_READ_WRITE_TOKEN (or Blob OIDC store binding). History is never public. Each bot/chat retains at most 10 text turns plus bounded campaign context and a short-lived explicit proposal.
+Read/write state uses uncached reads and ETag-conditional writes. Update IDs and pre-effect action checkpoints reduce retries; ambiguous write failures are not automatically repeated. This is not a distributed transaction with Facebook. Do not repeat a timed-out write before checking its state.
+Mutation guards require a current direct instruction with a uniquely identified target and specified budget/20% increment, or assent to a matching proposal from a prior turn within 15 minutes. Advice/questions/negations and forwarded messages do not authorize writes.
+A single turn is bounded to 5 model steps and 3 campaign changes. A proposal does not execute anything. New/copy campaigns stay PAUSED.
+api/telegram has a 300-second maximum duration. Telegram can send duplicate webhooks while a long request is still running; the conversation checkpoint suppresses re-execution.
+Run node tests/assistant.test.mjs in addition to the previous test suites. Model, storage and mutation calls are injected/mocked in tests; live verification is separate.
