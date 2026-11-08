@@ -73,7 +73,7 @@ console.log("PASS assistant: natural chat/memory, live-data tool loop, explicit 
 
 process.env.AI_PROVIDER="gemini";process.env.GEMINI_API_KEY="test-google-key";
 globalThis.fetch=async(url,opts)=>{
- assert.ok(url.endsWith("/models/gemini-2.5-flash-lite:generateContent"));
+ assert.ok(url.endsWith("/models/gemini-3.5-flash-lite:generateContent"));
  assert.equal(opts.headers["x-goog-api-key"],"test-google-key");
  const body=JSON.parse(opts.body);assert.ok(body.generationConfig);assert.ok(body.tools.length>0);
  assert.ok(!JSON.stringify(body).includes("test-google-key"));

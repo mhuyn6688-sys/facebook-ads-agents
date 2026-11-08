@@ -100,7 +100,7 @@ api/telegram has a 300-second maximum duration. Telegram can send duplicate webh
 Run node tests/assistant.test.mjs in addition to the previous test suites. Model, storage and mutation calls are injected/mocked in tests; live verification is separate.
 
 ## Free Gemini provider (production default)
-AI_PROVIDER=gemini calls Google's Gemini Developer API directly, not Vercel AI Gateway. GEMINI_MODEL defaults to gemini-2.5-flash-lite, which supports function calling and has a free tier.
+AI_PROVIDER=gemini calls Google's Gemini Developer API directly, not Vercel AI Gateway. GEMINI_MODEL defaults to gemini-3.5-flash-lite, which supports function calling and has a free tier.
 Create an API key in Google AI Studio using a project on the Free tier, without enabling Cloud Billing. Save it as a Secret named GEMINI_API_KEY for Production in Vercel, then redeploy. Never paste it into chat/source.
 The same conversation memory and restricted Facebook tools are used. A 429 quota response stops the turn with a free-quota explanation. There is no automatic fallback to a paid provider and no code that purchases credits.
 Google controls availability and free-tier limits, and free-tier data may be used to improve its products according to its terms. This is not an unlimited/free hosting guarantee; Vercel Functions and private Blob retain their own plan quotas.
