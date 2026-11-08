@@ -59,7 +59,7 @@ let lock=memory({turns:[],current:{updateId:40,startedAt:Date.now(),actions:[]},
 assert.ok((await assistantReply({chatId:"1",botId:"2",text:"hỏi tiếp",updateId:41,store:lock})).includes("đang xử lý"));
 store=memory();store.save=async()=>{throw Error("etag mismatch")};
 assert.ok((await assistantReply({chatId:"1",botId:"2",text:"hi",updateId:42,store})).includes("chưa chạy thao tác"));
-process.env.AI_GATEWAY_MODEL="openai/gpt-4.1-mini";delete process.env.AI_GATEWAY_API_KEY;
+process.env.AI_PROVIDER="vercel";process.env.AI_GATEWAY_MODEL="openai/gpt-4.1-mini";delete process.env.AI_GATEWAY_API_KEY;
 globalThis.fetch=async(url,opts)=>{
  const body=JSON.parse(opts.body);assert.equal(opts.headers.Authorization,"Bearer oidc-current");
  assert.ok(!JSON.stringify(body).includes("oidc-current"));assert.ok(body.tools.length>0);
@@ -70,3 +70,22 @@ globalThis.fetch=async()=>({ok:false,status:402,json:async()=>({error:{code:"ins
 await assert.rejects(()=>gatewayCompletion([],"oidc-current"),GatewayError);
 assert.ok(assistantError(new GatewayError(402,"insufficient_funds")).includes("credit"));
 console.log("PASS assistant: natural chat/memory, live-data tool loop, explicit mutation, advice/ambiguity/amount guards, prior-turn consent, duplicate and ambiguous-write protection, readonly forwarded content, CAS/lock handling, OIDC and gateway errors");
+
+process.env.AI_PROVIDER="gemini";process.env.GEMINI_API_KEY="test-google-key";
+globalThis.fetch=async(url,opts)=>{
+ assert.equal(url,"https://generativelanguage.googleapis.com/v1beta/openai/chat/completions");
+ assert.equal(opts.headers.Authorization,"Bearer test-google-key");
+ const body=JSON.parse(opts.body);assert.equal(body.model,"gemini-2.5-flash-lite");assert.ok(body.tools.length>0);
+ assert.ok(!JSON.stringify(body).includes("test-google-key"));
+ return {ok:true,json:async()=>({choices:[{message:{content:"Gemini trả lời"}}]})};
+};
+assert.equal((await gatewayCompletion([],"must-not-use-vercel-oidc")).content,"Gemini trả lời");
+let attemptsFree=0;
+globalThis.fetch=async(url)=>{attemptsFree++;assert.ok(url.includes("googleapis.com"));return {ok:false,status:429,json:async()=>({error:{code:429,status:"RESOURCE_EXHAUSTED"}})};};
+await assert.rejects(()=>gatewayCompletion([],"vercel-credential"),GatewayError);
+assert.equal(attemptsFree,1);
+assert.ok(assistantError(new GatewayError(429,"quota","gemini")).includes("miễn phí"));
+delete process.env.GEMINI_API_KEY;
+await assert.rejects(()=>gatewayCompletion([],"vercel-credential"),error=>error.provider==="gemini"&&error.code==="missing_configuration");
+assert.equal(attemptsFree,1);
+console.log("PASS free Gemini: direct Google endpoint, tool calling payload, private API key, quota handling, no paid fallback");
