@@ -15,7 +15,7 @@ globalThis.fetch=async(url,opts={})=>{
  }else if(p==="act_123")data={currency:"VND"};
  else if(p==="act_123/campaigns")data={data:[{id:"1",name:"Template",created_time:"2026-11-09",daily_budget:"200000",effective_status:"ACTIVE"}]};
  else if(p==="1"||p==="2"||p==="99")data={id:p,name:"Template",account_id:"123",daily_budget:"200000"};
- else if(p==="1/adsets")data={data:[{id:"12"}]};
+ else if(p==="1/adsets")data={data:[{id:"12",optimization_goal:"CONVERSATIONS",destination_type:"MESSENGER"}]};
  else if(p==="1/ads")data={data:[{id:"11",name:"Used Ad",adset_id:"12",creative:{id:"555",object_story_id:"888_111",body:"Original content"}}]};
  else if(p==="888/published_posts"){
   if(mode==="fallback"||(mode==="page-token"&&opts.headers.Authorization!=="Bearer page-secret"))
@@ -63,3 +63,7 @@ assert.ok(final.text.includes("PAUSED"));assert.ok(!writes.some(w=>w.p==="act_12
 console.log("PASS post picker: published/reusable posts, Page-token fallback without leaks, nonce/expiry, namespace isolation, button routes, pinned template/creative, no campaign copy on creative rejection, guided creation stays PAUSED");
 
 
+
+badCreative=false;writes=[];await setAds("888_222",200000,"New messaging post",{templateId:"1"});
+assert.deepEqual(writes.find(w=>w.p==="act_123/adcreatives").b.call_to_action,{type:"MESSAGE_PAGE",value:{app_destination:"MESSENGER"}});
+console.log("PASS selected post creative inherits Messenger destination CTA");
