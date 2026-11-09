@@ -90,3 +90,9 @@ console.log("PASS menus: exact commands, menu auto-registration/cache, persisten
 
 
 
+
+writes=[];const inspection=await callbackAction("inspect:99");
+assert.equal(inspection.inspection.id,"99");
+assert.equal(inspection.inspection.ads.length,1);assert.equal(inspection.inspection.adsets.length,1);
+assert.equal(writes.length,0);
+console.log("PASS authenticated campaign structure inspection is read-only");
