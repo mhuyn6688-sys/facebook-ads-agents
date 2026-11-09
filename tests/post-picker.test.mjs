@@ -11,11 +11,12 @@ globalThis.fetch=async(url,opts={})=>{
  if(opts.method==="POST"){
   const b=JSON.parse(opts.body);writes.push({p,b});
   if(p==="act_123/adcreatives"&&badCreative)return {ok:false,status:400,json:async()=>({error:{message:"Exact Meta rejection",code:100,error_subcode:1885194}})};
-  data=p==="1/copies"?{copied_campaign_id:"99"}:p==="act_123/adcreatives"?{id:"777"}:{success:true};
+  data=p==="12/copies"?{copied_adset_id:"992"}:p==="act_123/ads"?{id:"991"}:p==="1/copies"?{copied_campaign_id:"99"}:p==="act_123/adcreatives"?{id:"777"}:{success:true};
  }else if(p==="act_123")data={currency:"VND"};
  else if(p==="act_123/campaigns")data={data:[{id:"1",name:"Template",created_time:"2026-11-09",daily_budget:"200000",effective_status:"ACTIVE"}]};
  else if(p==="1"||p==="2"||p==="99")data={id:p,name:"Template",account_id:"123",daily_budget:"200000"};
- else if(p==="1/ads")data={data:[{id:"11",name:"Used Ad",creative:{id:"555",object_story_id:"888_111",body:"Original content"}}]};
+ else if(p==="1/adsets")data={data:[{id:"12"}]};
+ else if(p==="1/ads")data={data:[{id:"11",name:"Used Ad",adset_id:"12",creative:{id:"555",object_story_id:"888_111",body:"Original content"}}]};
  else if(p==="888/published_posts"){
   if(mode==="fallback"||(mode==="page-token"&&opts.headers.Authorization!=="Bearer page-secret"))
    return {ok:false,status:403,json:async()=>({error:{message:"Page permission not available",code:10}})};
@@ -47,7 +48,7 @@ assert.equal((await command("/setads",{openPostPicker:async()=>picker})).text,pi
 assert.equal((await callbackAction("ui:setads",{openPostPicker:async()=>picker})).text,picker.text);
 writes=[];await setAds("888_111",200000,"New", {templateId:"1",creativeId:"555"});
 assert.ok(!writes.some(w=>w.p==="act_123/adcreatives"));
-assert.ok(writes.some(w=>w.p==="991"&&w.b.creative.creative_id==="555"));
+assert.ok(writes.some(w=>w.p==="act_123/ads"&&w.b.creative.creative_id==="555"));
 assert.ok(!writes.some(w=>w.p==="99"&&w.b.status==="ACTIVE"));
 writes=[];await assert.rejects(()=>setAds("888_222",200000,"New",{templateId:"1",creativeId:"555"}),/không còn/);assert.equal(writes.length,0);
 badCreative=true;writes=[];await assert.rejects(()=>setAds("888_222",200000,"New",{templateId:"1"}),/100.*1885194/);
@@ -60,3 +61,5 @@ badCreative=false;writes=[];
 const final=await guidedReply(reply("Chosen Post Campaign",third.cards[0].text));
 assert.ok(final.text.includes("PAUSED"));assert.ok(!writes.some(w=>w.p==="act_123/adcreatives"));
 console.log("PASS post picker: published/reusable posts, Page-token fallback without leaks, nonce/expiry, namespace isolation, button routes, pinned template/creative, no campaign copy on creative rejection, guided creation stays PAUSED");
+
+

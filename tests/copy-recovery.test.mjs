@@ -15,6 +15,7 @@ globalThis.fetch=async(url,opts={})=>{
    if(mode==="attribution")return {ok:false,status:400,json:async()=>({error:{message:"Attribution",code:100,error_subcode:1885501}})};
    data={copied_adset_id:"20"};
   }else if(path==="act_123/adsets")data={id:"20"};
+  else if(path==="act_123/ads")data={id:"30"};
   else if(path==="3/copies"){if(mode==="childfail")throw Error("timeout");data={copied_ad_id:"30"};}
   else data={success:true};
  }else if(path==="act_123")data={currency:"VND"};
@@ -51,3 +52,9 @@ await assert.rejects(()=>duplicate("1",200000,{prepare:false}),e=>e.partial_camp
 mode="resume";writes=[];assert.equal(await duplicate("1",200000,{prepare:false,resumeId:"9"}),"9");
 assert.ok(!writes.some(w=>w.path==="1/copies"));
 console.log("PASS attribution recovery, target preservation, partial failure checkpoint and reuse of empty PAUSED copy");
+
+mode="large";writes=[];
+assert.equal(await duplicate("1",200000,{prepare:false,replacementCreativeId:"777"}),"9");
+assert.ok(!writes.some(w=>w.path==="1/copies"&&w.b.deep_copy===true));
+assert.ok(!writes.some(w=>w.path==="3/copies"));
+assert.equal(writes.find(w=>w.path==="act_123/ads").b.creative.creative_id,"777");
