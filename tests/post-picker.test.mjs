@@ -20,11 +20,12 @@ globalThis.fetch=async(url,opts={})=>{
  else if(p==="1/ads")data={data:[{id:"11",name:"Used Ad",adset_id:"12",creative:{id:"555",object_story_id:"888_111",body:"Original content"}}]};
  else if(p==="888_222")data={id:p,message:"Original copy",attachments:{data:[{media_type:video?"video":"photo",target:{id:"123456"},media:{image:{src:"https://example.com/original.jpg"}}}]}};
  else if(p==="888/published_posts"){
-  if(mode==="fallback"||(mode==="page-token"&&opts.headers.Authorization!=="Bearer page-secret"))
+  if(mode.startsWith("expired")&&opts.headers.Authorization==="Bearer expired-token")return {ok:false,status:400,json:async()=>({error:{message:"Session expired",code:190,error_subcode:463}})};
+  if(mode==="fallback"||(["page-token","expired-refresh","expired-none"].includes(mode)&&opts.headers.Authorization!=="Bearer page-secret"))
    return {ok:false,status:403,json:async()=>({error:{message:"Page permission not available",code:10}})};
   data={data:[{id:"888_222",message:"A new published post",permalink_url:"https://facebook.com/888/posts/222",created_time:"2026-11-08"}],paging:{next:"https://ignored",cursors:{after:"cursor"}}};
  }else if(p==="act_123/ads")data={data:[{id:"22",name:"Second CBO post",campaign_id:"2",creative:{id:"666",object_story_id:"888_333",body:"Second campaign content"}}]};
- else if(p==="me/accounts")data={data:mode==="page-token"?[{id:"888",access_token:"page-secret"}]:[]};
+ else if(p==="me/accounts")data={data:["page-token","expired-refresh"].includes(mode)?[{id:"888",access_token:"page-secret"}]:[]};
  else if(p==="99/ads")data={data:[{id:"991"}]};
  else if(p==="99/adsets")data={data:[{id:"992"}]};
  else throw Error("Unmocked "+p);
@@ -80,3 +81,11 @@ console.log("PASS explicit objective incompatibility rebuilds original post cont
 video=true;writes=[];await setAds("888_222",200000,"Video campaign",{templateId:"1"});
 assert.equal(writes.find(w=>w.p==="act_123/adcreatives"&&w.b.object_story_spec).b.object_story_spec.video_data.video_id,"123456");
 console.log("PASS video content uses numeric video ID, original thumbnail and Messenger CTA");
+
+process.env.FB_PAGE_ACCESS_TOKEN=" expired-token\n";
+mode="expired-refresh";const renewed=await browsePosts();
+assert.equal(renewed.page_error,null);assert.ok(!JSON.stringify(renewed).includes("page-secret"));
+mode="expired-none";const expired=await browsePosts();
+assert.equal(expired.page_error.code,190);assert.match(expired.page_error.message,/FB_PAGE_ACCESS_TOKEN/);
+delete process.env.FB_PAGE_ACCESS_TOKEN;
+console.log("PASS expired Page token refresh with existing authorized user token and actionable failure without secret leaks");
