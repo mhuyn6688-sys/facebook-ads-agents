@@ -130,6 +130,7 @@ export async function guidedReply(message) {
   const post = prior.match(/\nBài viết: (\d+(?:_\d+)?)\n/);
   const amount = prior.match(/\nNgân sách VND: (\d+)\n/);
   const templateId = prior.match(/\nMẫu CBO: (\d+)\n/);
+  const resumeId = prior.match(/\nBản tạo dở: (\d+)\n/);
   const creativeId = prior.match(/\nMẫu creative: (\d+)\n/);
   try {
     if (budgetId) {
@@ -152,11 +153,14 @@ export async function guidedReply(message) {
     }
     if (prior.startsWith("🚀 Lên Cam mới — Bước 3/3\n") && post && amount) {
       if (!text || text.length > 120 || /[\r\n]/.test(text)) throw Error("Tên cần có 1–120 ký tự trên một dòng.");
-      const id = await setAds(post[1], amount[1], text, {templateId:templateId?.[1],creativeId:creativeId?.[1]});
+      const id = await setAds(post[1], amount[1], text, {templateId:templateId?.[1],creativeId:creativeId?.[1],resumeId:resumeId?.[1]});
       return createdOutput(id);
     }
   } catch(e) {
-    return { creation: {ok:false,error:e.message}, text: "Chưa hoàn tất: " + e.message, cards: prompt(prior).cards };
+    const retry = e.partial_campaign_id && !prior.includes("Bản tạo dở:") ?
+      prior.replace("\nNgân sách VND:", "\nBản tạo dở: " + e.partial_campaign_id + "\nNgân sách VND:") : prior;
+    return { creation: {ok:false,error:e.message,...(e.partial_campaign_id?{partial_campaign_id:e.partial_campaign_id}:{})},
+      text: "Chưa hoàn tất: " + e.message, cards: prompt(retry).cards };
   }
   return null;
 }
