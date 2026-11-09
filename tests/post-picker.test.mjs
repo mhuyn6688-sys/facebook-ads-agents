@@ -5,18 +5,20 @@ import {command,callbackAction,guidedReply} from "../api/telegram.js";
 import {conversationPath} from "../lib/conversation-store.js";
 process.env.FB_AD_ACCOUNT_ID="123";process.env.FB_ACCESS_TOKEN="ads-token";
 process.env.TELEGRAM_BOT_TOKEN="999:test";process.env.TELEGRAM_CHAT_ID="7162906074";
-let writes=[],mode="page",badCreative=false;
+let writes=[],mode="page",badCreative=false,incompatible=false,video=false;
 globalThis.fetch=async(url,opts={})=>{
  const u=new URL(url),p=u.pathname.replace("/v26.0/","");let data;
  if(opts.method==="POST"){
   const b=JSON.parse(opts.body);writes.push({p,b});
   if(p==="act_123/adcreatives"&&badCreative)return {ok:false,status:400,json:async()=>({error:{message:"Exact Meta rejection",code:100,error_subcode:1885194}})};
-  data=p==="12/copies"?{copied_adset_id:"992"}:p==="act_123/ads"?{id:"991"}:p==="1/copies"?{copied_campaign_id:"99"}:p==="act_123/adcreatives"?{id:"777"}:{success:true};
+  if(p==="act_123/ads"&&incompatible&&b.creative?.creative_id==="777")return {ok:false,status:400,json:async()=>({error:{message:"Incompatible",code:100,error_subcode:1487891}})};
+  data=p==="12/copies"?{copied_adset_id:"992"}:p==="act_123/ads"?{id:"991"}:p==="1/copies"?{copied_campaign_id:"99"}:p==="act_123/adcreatives"?{id:b.object_story_spec?"778":"777"}:{success:true};
  }else if(p==="act_123")data={currency:"VND"};
  else if(p==="act_123/campaigns")data={data:[{id:"1",name:"Template",created_time:"2026-11-09",daily_budget:"200000",effective_status:"ACTIVE"}]};
  else if(p==="1"||p==="2"||p==="99")data={id:p,name:"Template",account_id:"123",daily_budget:"200000"};
  else if(p==="1/adsets")data={data:[{id:"12",optimization_goal:"CONVERSATIONS",destination_type:"MESSENGER"}]};
  else if(p==="1/ads")data={data:[{id:"11",name:"Used Ad",adset_id:"12",creative:{id:"555",object_story_id:"888_111",body:"Original content"}}]};
+ else if(p==="888_222")data={id:p,message:"Original copy",attachments:{data:[{media_type:video?"video":"photo",target:{id:"123456"},media:{image:{src:"https://example.com/original.jpg"}}}]}};
  else if(p==="888/published_posts"){
   if(mode==="fallback"||(mode==="page-token"&&opts.headers.Authorization!=="Bearer page-secret"))
    return {ok:false,status:403,json:async()=>({error:{message:"Page permission not available",code:10}})};
@@ -64,6 +66,17 @@ console.log("PASS post picker: published/reusable posts, Page-token fallback wit
 
 
 
-badCreative=false;writes=[];await setAds("888_222",200000,"New messaging post",{templateId:"1"});
-assert.deepEqual(writes.find(w=>w.p==="act_123/adcreatives").b.call_to_action,{type:"MESSAGE_PAGE",value:{app_destination:"MESSENGER"}});
-console.log("PASS selected post creative inherits Messenger destination CTA");
+badCreative=false;incompatible=true;writes=[];
+await setAds("888_222",200000,"New messaging post",{templateId:"1"});
+const rebuilt=writes.find(w=>w.p==="act_123/adcreatives"&&w.b.object_story_spec).b.object_story_spec;
+assert.equal(rebuilt.link_data.message,"Original copy");
+assert.equal(rebuilt.link_data.picture,"https://example.com/original.jpg");
+assert.equal(rebuilt.link_data.call_to_action.type,"MESSAGE_PAGE");
+assert.equal(writes.filter(w=>w.p==="act_123/ads").length,2);
+assert.equal(writes.filter(w=>w.p==="act_123/ads").at(-1).b.creative.creative_id,"778");
+assert.ok(!writes.some(w=>w.p==="99"&&w.b.status==="ACTIVE"));
+console.log("PASS explicit objective incompatibility rebuilds original post content for Messenger, retries only rejected ad, stays PAUSED");
+
+video=true;writes=[];await setAds("888_222",200000,"Video campaign",{templateId:"1"});
+assert.equal(writes.find(w=>w.p==="act_123/adcreatives"&&w.b.object_story_spec).b.object_story_spec.video_data.video_id,"123456");
+console.log("PASS video content uses numeric video ID, original thumbnail and Messenger CTA");
