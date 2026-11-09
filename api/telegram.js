@@ -115,7 +115,7 @@ export async function callbackAction(data, context = {}) {
 }
 
 function createdOutput(id) {
-  return { text: "Đã tạo chiến dịch mới với bài viết mới, đang PAUSED.",
+  return { creation: {ok:true,id,status:"PAUSED"}, text: "Đã tạo chiến dịch mới với bài viết mới, đang PAUSED.",
     cards: [campaignCard({ id, effective_status: "PAUSED" }, "Campaign_ID: " + id + "\nKiểm tra trước khi bấm Bật.")] };
 }
 export async function guidedReply(message) {
@@ -156,7 +156,7 @@ export async function guidedReply(message) {
       return createdOutput(id);
     }
   } catch(e) {
-    return { text: "Chưa hoàn tất: " + e.message, cards: prompt(prior).cards };
+    return { creation: {ok:false,error:e.message}, text: "Chưa hoàn tất: " + e.message, cards: prompt(prior).cards };
   }
   return null;
 }
@@ -225,5 +225,5 @@ export default async function handler(req, res) {
     console.error("Telegram reply delivery failed", update.update_id);
     return res.status(200).json({ ok: true, delivery_error: true });
   }
-  return res.status(200).json({ ok: true, ...(output?.picker ? {post_picker:output.picker} : {}), ...(usedAssistant ? { assistant: assistantMeta || {ok:false} } : {}) });
+  return res.status(200).json({ ok: true, ...(output?.picker ? {post_picker:output.picker} : {}), ...(output?.creation ? {creation:output.creation} : {}), ...(usedAssistant ? { assistant: assistantMeta || {ok:false} } : {}) });
 }
