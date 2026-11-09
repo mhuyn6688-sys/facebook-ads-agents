@@ -14,7 +14,7 @@ globalThis.fetch=async(url,options={})=>{
  const u=new URL(url),path=u.pathname.replace("/v26.0/","");let data;
  if(options.method==="POST"){
   const body=JSON.parse(options.body);writes.push({path,body});
-  data=path.endsWith("/copies")?{copied_campaign_id:"99"}:path==="act_123/adcreatives"?{id:"777"}:{success:true};
+  data=path==="12/copies"?{copied_adset_id:"992"}:path==="act_123/ads"?{id:"991"}:path.endsWith("/copies")?{copied_campaign_id:"99"}:path==="act_123/adcreatives"?{id:"777"}:{success:true};
  }else if(path==="act_123")data={currency:"VND",name:"Test",account_status:1,
   funding_source_details:{display_string:"Visa •••• 1234",type:1}};
  else if(path==="act_123/campaigns"){
@@ -25,7 +25,8 @@ globalThis.fetch=async(url,options={})=>{
    [{campaign_id:"1",campaign_name:"Test",spend:"100000",actions:[{action_type:"onsite_conversion.messaging_conversation_started_7d",value:"5"}]},
     {campaign_id:"2",campaign_name:"Paused",spend:"100000",actions:[]}]};
  }else if(path==="act_123/ads")data={data:[]};
- else if(path==="1/ads")data={data:[{id:"10",creative:{object_story_id:"888_111"}}]};
+ else if(path==="1/adsets")data={data:[{id:"12"}]};
+ else if(path==="1/ads")data={data:[{id:"10",adset_id:"12",creative:{object_story_id:"888_111"}}]};
  else if(path==="99/ads")data={data:[{id:"991"}]};
  else if(path==="99/adsets")data={data:[{id:"992"}]};
  else if(/^\d+$/.test(path))data={id:path,name:"Campaign",account_id:"123",daily_budget:"300000",effective_status:campaignStatus};
