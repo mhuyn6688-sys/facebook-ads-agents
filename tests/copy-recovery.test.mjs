@@ -20,11 +20,12 @@ globalThis.fetch=async(url,opts={})=>{
   else data={success:true};
  }else if(path==="act_123")data={currency:"VND"};
  else if(path==="1"||path==="9")data={account_id:"123",daily_budget:"200000",effective_status:"PAUSED"};
- else if(path==="2")data={name:"Source",optimization_goal:"CONVERSATIONS",billing_event:"IMPRESSIONS",targeting:{geo_locations:{countries:["VN"]}},promoted_object:{page_id:"888"},bid_amount:"0"};
+ else if(path==="2")data={name:"Source",optimization_goal:"CONVERSATIONS",billing_event:"IMPRESSIONS",targeting:{geo_locations:{countries:["VN"]},targeting_automation:{advantage_audience:1,individual_setting:{age:1}}},promoted_object:{page_id:"888"},bid_amount:"0"};
+ else if(path==="20")data={id:"20",name:"Source",optimization_goal:"CONVERSATIONS",billing_event:"IMPRESSIONS",targeting:{geo_locations:{countries:[mode==="unsafe-draft"?"US":"VN"]},targeting_automation:{advantage_audience:1}},promoted_object:{page_id:"888"},bid_amount:"0"};
  else if(path==="1/adsets")data={data:[{id:"2"}]};
  else if(path==="1/ads")data={data:[{id:"3",adset_id:"2"}]};
  else if(path==="9/adsets")data={data:mode==="resume"?[]:[{id:"20"}]};
- else if(path==="9/ads")data={data:mode==="resume"?[]:[{id:"30"}]};
+ else if(path==="9/ads")data={data:["resume","resume-draft","unsafe-draft"].includes(mode)?[]:[{id:"30"}]};
  else throw Error("Unexpected "+path);
  return {ok:true,status:200,json:async()=>data};
 };
@@ -58,3 +59,12 @@ assert.equal(await duplicate("1",200000,{prepare:false,replacementCreativeId:"77
 assert.ok(!writes.some(w=>w.path==="1/copies"&&w.b.deep_copy===true));
 assert.ok(!writes.some(w=>w.path==="3/copies"));
 assert.equal(writes.find(w=>w.path==="act_123/ads").b.creative.creative_id,"777");
+
+mode="resume-draft";writes=[];
+assert.equal(await duplicate("1",200000,{prepare:false,resumeId:"9",replacementCreativeId:"777"}),"9");
+assert.ok(!writes.some(w=>w.path.endsWith("/copies")));
+assert.equal(writes.find(w=>w.path==="act_123/ads").b.adset_id,"20");
+mode="unsafe-draft";writes=[];
+await assert.rejects(()=>duplicate("1",200000,{prepare:false,resumeId:"9",replacementCreativeId:"777"}),/Không khớp/);
+assert.ok(!writes.some(w=>w.path==="act_123/ads"));
+console.log("PASS resume matches actual audience IDs and ignores only Meta readback UI hint; rejects changed targeting");
